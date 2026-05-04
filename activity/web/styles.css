@@ -1,0 +1,110 @@
+:root {
+  --panel: rgba(44, 57, 69, 0.9);
+  --text: #ffffff;
+  --accent: #7cd3f7;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--text);
+  background: linear-gradient(180deg, #77d6ff 0%, #7ad2ff 55%, #b9e9ff 100%);
+}
+
+.scene {
+  min-height: 100vh;
+  position: relative;
+  padding: 10px;
+  overflow: hidden;
+}
+
+.scene::after {
+  content: "";
+  position: absolute;
+  inset: 50% 0 0 0;
+  background: linear-gradient(180deg, #53beef, #7ad0f0);
+  z-index: -2;
+}
+
+.now-playing {
+  width: min(75vw, 760px);
+  border-radius: 14px;
+  background: var(--panel);
+  padding: 10px 16px;
+  line-height: 1.25;
+}
+
+.label {
+  font-weight: 800;
+  font-size: 1.7rem;
+}
+
+.title {
+  margin-top: 4px;
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.control-rail {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 78px;
+  border-radius: 16px;
+  background: var(--panel);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.control-rail button {
+  width: 100%;
+  aspect-ratio: 1;
+  border: none;
+  border-radius: 999px;
+  font-size: 1.5rem;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+}
+
+.floating-player {
+  position: absolute;
+  right: 250px;
+  bottom: 60px;
+  min-width: 240px;
+  border-radius: 16px;
+  background: var(--panel);
+  padding: 10px 12px;
+}
+
+.track-name {
+  font-size: 1.7rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+#volume-slider {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .label {
+    font-size: 1.2rem;
+  }
+
+  .title {
+    font-size: 1rem;
+  }
+
+  .floating-player {
+    right: 90px;
+  }
+}

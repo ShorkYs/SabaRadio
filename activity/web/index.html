@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Saba Radio Activity</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="scene">
+    <header class="now-playing">
+      <div class="label">Currently Playing:</div>
+      <div id="song-title" class="title">Loading...</div>
+    </header>
+
+    <aside class="control-rail">
+      <button id="skip-btn" title="Skip track">⏭</button>
+      <button id="refresh-btn" title="Refresh">↻</button>
+    </aside>
+
+    <section class="floating-player">
+      <div class="track-name" id="mini-title">ocean wave</div>
+      <input id="volume-slider" type="range" min="0" max="100" value="70" />
+    </section>
+  </main>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>
