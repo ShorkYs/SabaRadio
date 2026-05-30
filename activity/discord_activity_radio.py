@@ -1,8 +1,10 @@
 import argparse
 import json
+import mimetypes
 import os
 import sys
 import threading
+import time
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -18,6 +20,8 @@ from audio.output_ffmpeg import OutFFMPEG
 from system.device_manager import DeviceManager
 from system.file_manager import FileManager
 
+AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac", ".opus", ".wma"}
+
 
 class RadioState:
     def __init__(self, songs: list[str], volume: float):
@@ -25,17 +29,31 @@ class RadioState:
         self.songs = songs
         self.current_index = -1
         self.current_song: str | None = None
+        self.current_started_at: float | None = None
         self.volume = volume
         self.skip_requested = False
 
     def snapshot(self) -> dict:
         with self.lock:
+            previous_index = (self.current_index - 1) % len(self.songs) if self.songs and self.current_index >= 0 else None
+            next_index = (self.current_index + 1) % len(self.songs) if self.songs and self.current_index >= 0 else None
             return {
                 "current_song": self.current_song,
                 "current_index": self.current_index,
+                "current_started_at": self.current_started_at,
                 "total_songs": len(self.songs),
                 "volume": self.volume,
+                "previous_song": self.songs[previous_index] if previous_index is not None else None,
+                "next_song": self.songs[next_index] if next_index is not None else None,
+                "stream_url": "/api/stream/current" if self.current_song else None,
             }
+
+    def set_current(self, index: int, song: str):
+        with self.lock:
+            self.current_index = index
+            self.current_song = song
+            self.current_started_at = time.time()
+            self.skip_requested = False
 
     def request_skip(self):
         with self.lock:
@@ -47,9 +65,23 @@ class RadioState:
             self.skip_requested = False
             return requested
 
+    def wants_skip(self) -> bool:
+        with self.lock:
+            return self.skip_requested
+
     def set_volume(self, value: float):
         with self.lock:
             self.volume = max(0.0, min(1.0, value))
+
+    def get_volume(self) -> float:
+        with self.lock:
+            return self.volume
+
+
+def display_name(path: str | None) -> str | None:
+    if not path:
+        return None
+    return Path(path).stem.replace("_", " ").replace("-", " ")
 
 
 def list_outputs(p: pyaudio.PyAudio) -> None:
@@ -60,33 +92,70 @@ def list_outputs(p: pyaudio.PyAudio) -> None:
     print("======================\n")
 
 
+def open_output_stream(p: pyaudio.PyAudio, ffmpeg: OutFFMPEG, device_index: int | None):
+    if device_index is None:
+        return None
+    return p.open(
+        format=pyaudio.paInt16,
+        channels=ffmpeg.out_ch,
+        rate=ffmpeg.out_rate,
+        output=True,
+        output_device_index=device_index,
+    )
+
+
 def player_loop(state: RadioState, ffmpeg: OutFFMPEG, p: pyaudio.PyAudio, speaker_index: int | None, cable_index: int | None):
+    outputs_enabled = speaker_index is not None or cable_index is not None
+    if not outputs_enabled:
+        print("No PyAudio output devices were selected; the Discord Activity browser stream is still available.")
+
     while True:
         for idx, song in enumerate(state.songs):
-            with state.lock:
-                state.current_index = idx
-                state.current_song = song
-                ffmpeg.volume = state.volume
-
+            state.set_current(idx, song)
             print(f"▶ Now playing: {os.path.basename(song)}")
+
+            if not outputs_enabled:
+                while not state.wants_skip():
+                    time.sleep(0.2)
+                state.consume_skip_request()
+                continue
+
+            stream_speaker = stream_cable = None
             try:
-                ffmpeg.play(path=song, p=p, speaker_index=speaker_index, cable_index=cable_index)
+                stream_speaker = open_output_stream(p, ffmpeg, speaker_index)
+                stream_cable = open_output_stream(p, ffmpeg, cable_index)
+                for data in ffmpeg.stream(song):
+                    if state.wants_skip():
+                        break
+                    ffmpeg.volume = state.get_volume()
+                    data = ffmpeg._apply_volume_int16(data)
+                    if stream_speaker:
+                        stream_speaker.write(data)
+                    if stream_cable:
+                        stream_cable.write(data)
             except Exception as exc:
                 print(f"Playback failed for {song}: {exc}")
-
-            if state.consume_skip_request():
-                continue
+            finally:
+                if stream_cable:
+                    stream_cable.close()
+                if stream_speaker:
+                    stream_speaker.close()
+                state.consume_skip_request()
 
 
 class RadioHandler(BaseHTTPRequestHandler):
     state: RadioState
     web_root: Path
 
+    def log_message(self, format, *args):
+        return
+
     def _send_json(self, status: int, payload: dict):
         body = json.dumps(payload).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
         self.wfile.write(body)
 
@@ -95,16 +164,13 @@ class RadioHandler(BaseHTTPRequestHandler):
             self.send_error(HTTPStatus.NOT_FOUND)
             return
 
-        if file_path.suffix == ".html":
-            content_type = "text/html; charset=utf-8"
-        elif file_path.suffix == ".js":
+        content_type = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
+        if file_path.suffix == ".js":
             content_type = "application/javascript; charset=utf-8"
         elif file_path.suffix == ".css":
             content_type = "text/css; charset=utf-8"
-        elif file_path.suffix in {".png", ".jpg", ".jpeg", ".webp"}:
-            content_type = f"image/{file_path.suffix.lstrip('.')}"
-        else:
-            content_type = "application/octet-stream"
+        elif file_path.suffix == ".html":
+            content_type = "text/html; charset=utf-8"
 
         content = file_path.read_bytes()
         self.send_response(HTTPStatus.OK)
@@ -112,6 +178,50 @@ class RadioHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(content)))
         self.end_headers()
         self.wfile.write(content)
+
+    def _serve_audio(self, file_path: Path):
+        if not file_path.exists() or not file_path.is_file():
+            self.send_error(HTTPStatus.NOT_FOUND)
+            return
+
+        file_size = file_path.stat().st_size
+        range_header = self.headers.get("Range")
+        start = 0
+        end = file_size - 1
+        status = HTTPStatus.OK
+
+        if range_header:
+            units, _, range_spec = range_header.partition("=")
+            if units == "bytes":
+                first, _, last = range_spec.partition("-")
+                start = int(first) if first else 0
+                end = int(last) if last else end
+                end = min(end, file_size - 1)
+                status = HTTPStatus.PARTIAL_CONTENT
+
+        if start > end or start >= file_size:
+            self.send_error(HTTPStatus.REQUESTED_RANGE_NOT_SATISFIABLE)
+            return
+
+        length = end - start + 1
+        content_type = mimetypes.guess_type(file_path.name)[0] or "audio/mpeg"
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Content-Length", str(length))
+        if status == HTTPStatus.PARTIAL_CONTENT:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{file_size}")
+        self.end_headers()
+
+        with file_path.open("rb") as src:
+            src.seek(start)
+            remaining = length
+            while remaining > 0:
+                chunk = src.read(min(1024 * 256, remaining))
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+                remaining -= len(chunk)
 
     def _read_json_body(self) -> dict:
         length = int(self.headers.get("Content-Length", "0"))
@@ -129,8 +239,16 @@ class RadioHandler(BaseHTTPRequestHandler):
 
         if path == "/api/now-playing":
             snap = self.state.snapshot()
-            song_name = os.path.basename(snap["current_song"]) if snap["current_song"] else None
-            self._send_json(HTTPStatus.OK, {**snap, "display_name": song_name})
+            self._send_json(
+                HTTPStatus.OK,
+                {
+                    **snap,
+                    "display_name": display_name(snap["current_song"]),
+                    "file_name": os.path.basename(snap["current_song"]) if snap["current_song"] else None,
+                    "previous_display_name": display_name(snap["previous_song"]),
+                    "next_display_name": display_name(snap["next_song"]),
+                },
+            )
             return
 
         if path == "/api/queue":
@@ -141,6 +259,14 @@ class RadioHandler(BaseHTTPRequestHandler):
                     "count": len(self.state.songs),
                 },
             )
+            return
+
+        if path == "/api/stream/current":
+            current = self.state.snapshot()["current_song"]
+            if not current:
+                self.send_error(HTTPStatus.NOT_FOUND)
+                return
+            self._serve_audio(Path(current))
             return
 
         if path in {"/", "/index.html"}:
@@ -191,7 +317,7 @@ class RadioHandler(BaseHTTPRequestHandler):
                     "client_secret": client_secret,
                     "grant_type": "authorization_code",
                     "code": code,
-                    "redirect_uri": "https://127.0.0.1",
+                    "redirect_uri": os.getenv("DISCORD_REDIRECT_URI", "https://127.0.0.1"),
                 }
             ).encode("utf-8")
 
@@ -214,13 +340,31 @@ class RadioHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND)
 
 
+def resolve_songs(music_folder: str, radio_file: str | None) -> list[str]:
+    if radio_file:
+        file_path = Path(radio_file).expanduser().resolve()
+        if not file_path.is_file():
+            raise RuntimeError(f"Radio file not found: {file_path}")
+        if file_path.suffix.lower() not in AUDIO_EXTENSIONS:
+            raise RuntimeError(f"Unsupported radio file extension: {file_path.suffix}")
+        return [str(file_path)]
+
+    fm = FileManager(
+        music_folder=music_folder,
+        allowed_extensions=AUDIO_EXTENSIONS,
+        shuffle=True,
+    )
+    return fm.get_playlist(includeSubDirectories=True)
+
+
 def main():
-    parser = argparse.ArgumentParser(description="Discord Activity style local radio server")
-    parser.add_argument("--music-folder", default="./music")
+    parser = argparse.ArgumentParser(description="Local Saba Radio server for a Discord Activity")
+    parser.add_argument("--music-folder", default="./music", help="Folder to scan when --radio-file is not set")
+    parser.add_argument("--radio-file", help="Play one local audio file on loop instead of scanning a folder")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8787)
     parser.add_argument("--speaker-index", type=int)
-    parser.add_argument("--cable-index", type=int)
+    parser.add_argument("--cable-index", type=int, help="Virtual cable output device index for piping audio into Discord")
     parser.add_argument("--ffmpeg-path", default=None)
     parser.add_argument("--volume", type=float, default=0.7)
     args = parser.parse_args()
@@ -228,12 +372,7 @@ def main():
     p = pyaudio.PyAudio()
     list_outputs(p)
 
-    fm = FileManager(
-        music_folder=args.music_folder,
-        allowed_extensions={".mp3", ".wav", ".flac", ".ogg", ".m4a"},
-        shuffle=True,
-    )
-    songs = fm.get_playlist(includeSubDirectories=True)
+    songs = resolve_songs(args.music_folder, args.radio_file)
     if not songs:
         raise RuntimeError(f"No songs found in {args.music_folder}")
 
@@ -252,6 +391,8 @@ def main():
 
     server = ThreadingHTTPServer((args.host, args.port), RadioHandler)
     print(f"Activity UI: http://{args.host}:{args.port}")
+    print("Use --radio-file path/to/song.mp3 for a single local radio file, or --music-folder for a playlist.")
+    print("Set --cable-index to a virtual audio cable input if you want Discord voice to receive the same audio.")
     server.serve_forever()
 
 

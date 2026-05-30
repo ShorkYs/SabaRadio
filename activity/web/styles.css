@@ -1,110 +1,104 @@
 :root {
-  --panel: rgba(44, 57, 69, 0.9);
-  --text: #ffffff;
-  --accent: #7cd3f7;
+  --panel: rgba(66, 68, 85, 0.63);
+  --panel-line: rgba(87, 87, 87, 0.47);
+  --accent: #8d8fad;
+  --muted: #828282;
+  --font-radio: "Milk Choco", "Trebuchet MS", system-ui, sans-serif;
 }
 
-* {
-  box-sizing: border-box;
-  font-family: Inter, system-ui, sans-serif;
-}
+* { box-sizing: border-box; }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  color: var(--text);
-  background: linear-gradient(180deg, #77d6ff 0%, #7ad2ff 55%, #b9e9ff 100%);
-}
+html, body { margin: 0; min-height: 100%; background: #000; }
+body { overflow: hidden; color: #fffdfd; font-family: var(--font-radio); }
 
-.scene {
-  min-height: 100vh;
+.saba-radio {
+  width: 100vw;
+  height: 100vh;
   position: relative;
-  padding: 10px;
+  background:
+    radial-gradient(circle at 50% 33%, rgba(95, 97, 125, 0.22), transparent 34%),
+    linear-gradient(180deg, #05050a 0%, #000 100%);
   overflow: hidden;
 }
 
-.scene::after {
-  content: "";
-  position: absolute;
-  inset: 50% 0 0 0;
-  background: linear-gradient(180deg, #53beef, #7ad0f0);
-  z-index: -2;
+.main-song-progress {
+  position: absolute; left: 2px; top: -10px; width: 100%; height: 21px; background: #505259;
+}
+.main-song-progress-color {
+  width: 38.5%; height: 21px; background: var(--accent); border-bottom-right-radius: 23px; transition: width 400ms ease;
 }
 
-.now-playing {
-  width: min(75vw, 760px);
-  border-radius: 14px;
-  background: var(--panel);
-  padding: 10px 16px;
-  line-height: 1.25;
+.main-control-panel {
+  position: absolute; left: 50%; top: 11px; width: 190px; height: 73px; transform: translateX(-50%);
+  background: var(--panel); box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25); border-bottom-right-radius: 23px; border-bottom-left-radius: 23px;
 }
+.main-control-panel p { margin: 0; position: absolute; font-weight: 400; }
+.clock-small { width: 100%; top: 0; text-align: center; color: #d9d9d9; font-size: 16px; }
+.clock-time { left: 32px; top: 9px; font-size: 60px; line-height: 1; letter-spacing: -4px; }
+.clock-meridiem { right: 8px; bottom: 8px; color: #fff; font-size: 15px; }
 
-.label {
-  font-weight: 800;
-  font-size: 1.7rem;
+.background-switcher {
+  position: absolute; left: 50%; bottom: -24px; width: min(1132px, 59vw); height: 343px; transform: translateX(-50%);
 }
-
-.title {
-  margin-top: 4px;
-  font-size: 1.5rem;
-  font-weight: 700;
+.scene-card { position: absolute; }
+.scene-card-featured { left: 374px; top: 0; width: 381px; height: 286px; }
+.scene-card-small { width: 300px; height: 227px; }
+.scene-card-left { left: 45px; top: 25px; }
+.scene-card-right { right: 47px; top: 21px; }
+.scene-art {
+  position: absolute; inset: 0 0 auto 0; height: calc(100% - 42px); border-radius: 39px; border: 1px solid #1f202b;
+  background:
+    radial-gradient(circle at 52% 28%, rgba(255, 255, 0, 0.8) 0 12px, transparent 13px),
+    linear-gradient(180deg, #15172a 0%, #23283e 50%, #090a10 100%);
 }
-
-.control-rail {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  width: 78px;
-  border-radius: 16px;
-  background: var(--panel);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+.scene-card-small .scene-art { height: 194px; border-radius: 32.5px; }
+.scene-tag {
+  position: absolute; left: 0; bottom: 0; width: 100%; height: 42px; background: var(--panel);
+  border-bottom-right-radius: 39px; border-bottom-left-radius: 39px; border: 1px solid rgba(0, 0, 0, 0.44); border-top: none;
 }
-
-.control-rail button {
-  width: 100%;
-  aspect-ratio: 1;
-  border: none;
-  border-radius: 999px;
-  font-size: 1.5rem;
-  cursor: pointer;
-  background: rgba(255, 255, 255, 0.2);
-  color: #fff;
+.scene-card-small .scene-tag { height: 33px; }
+.scene-title {
+  position: absolute; left: 50%; bottom: 10px; width: 190px; margin: 0; transform: translateX(-50%); text-align: center;
+  font-size: 24px; text-shadow: 0 4px 4px rgba(0, 0, 0, 0.25);
 }
+.moon { position: absolute; right: 19px; top: 13px; width: 25px; height: 25px; }
+.moon i { position: absolute; display: block; background: #ffff00; border-radius: 999px; transform: rotate(-6deg); }
+.moon i:nth-child(1) { width: 22px; height: 22px; left: 0; top: 2px; box-shadow: 0 0 150px 25px rgba(247, 255, 0, 0.61); }
+.moon i:nth-child(2) { width: 4px; height: 4px; left: 6px; top: 17px; }
+.moon i:nth-child(3) { width: 3px; height: 3px; left: 18px; top: 15px; }
+.moon i:nth-child(4) { width: 2px; height: 2px; left: 16px; top: 6px; }
+.moon i:nth-child(5) { width: 4px; height: 4px; left: 16px; top: 10px; }
+.moon i:nth-child(6) { width: 4px; height: 4px; left: 11px; top: 7px; }
+.moon i:nth-child(7) { width: 5px; height: 5px; left: 12px; top: 14px; }
 
-.floating-player {
-  position: absolute;
-  right: 250px;
-  bottom: 60px;
-  min-width: 240px;
-  border-radius: 16px;
-  background: var(--panel);
-  padding: 10px 12px;
+.search-pill {
+  position: absolute; left: 514px; top: 260px; width: 104px; height: 29px; border: 1px solid #1f202b; border-radius: 50px;
+  background: var(--panel); box-shadow: 0 4px 4px rgba(0, 0, 0, 0.25); color: #d9d9d9; font: 400 13px var(--font-radio);
+  display: flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer;
 }
+.search-icon { width: 10px; height: 10px; border: 2px solid #d9d9d9; border-radius: 50%; position: relative; }
+.search-icon::after { content: ""; position: absolute; width: 2px; height: 7px; right: -4px; bottom: -6px; transform: rotate(-45deg); background: #d9d9d9; }
 
-.track-name {
-  font-size: 1.7rem;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
+.queue-panel { position: absolute; right: 21px; top: 30px; width: 655px; height: 109px; }
+.queue-bg { position: absolute; inset: 0; background: var(--panel); border-top-right-radius: 40.5px; border-bottom-right-radius: 40.5px; border-bottom-left-radius: 40.5px; outline: 1px solid var(--panel-line); }
+.queue-cover { position: absolute; left: 20px; top: 28px; width: 80px; height: 59px; display: grid; place-items: center; background: #fff; color: #424455; border: 1px solid rgba(115, 115, 115, 0.44); font-size: 32px; }
+.queue-label, .queue-title { position: absolute; left: 108px; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.queue-label { width: 87px; color: var(--muted); font-size: 13px; }
+.previous-label { top: 10px; } .current-label { top: 44px; color: #52aaf3; font-size: 16px; } .next-label { top: 81px; }
+.queue-title { left: 197px; width: 360px; font-size: 13px; }
+.previous-title { top: 10px; color: var(--muted); } .current-title { top: 45px; color: #fff; } .next-title { top: 81px; color: var(--muted); }
+.queue-arrow { position: absolute; right: 14px; width: 53px; height: 53px; border: 1px solid #737373; background: #fff; color: #424455; cursor: pointer; font-size: 22px; }
+.queue-arrow.up { top: 1px; } .queue-arrow.down { bottom: 4px; }
 
-#volume-slider {
-  width: 100%;
-  accent-color: var(--accent);
-}
+.volume-panel { position: absolute; left: 37px; bottom: 43px; width: 81px; height: 282px; }
+.volume-bg { position: absolute; left: 0; bottom: 0; width: 81px; height: 81px; display: grid; place-items: center; background: var(--panel); box-shadow: 0 4px 4px rgba(0, 0, 0, 0.61); border-radius: 40.5px; border: 1px solid rgba(115, 115, 115, 0.44); font-size: 34px; }
+#volume-slider { position: absolute; left: -74px; top: 106px; width: 230px; transform: rotate(-90deg); accent-color: var(--accent); }
 
-@media (max-width: 900px) {
-  .label {
-    font-size: 1.2rem;
-  }
+.settings-panel { position: absolute; right: 23px; bottom: 34px; width: 206px; height: 81px; display: flex; align-items: center; justify-content: space-evenly; background: var(--panel); border-radius: 23px; border: 1px solid var(--panel-line); border-top: none; }
+.settings-panel button { width: 44px; height: 44px; border: 0; border-radius: 50px; background: #d9d9d9; color: #424455; font-size: 18px; cursor: pointer; }
 
-  .title {
-    font-size: 1rem;
-  }
+#activity-audio { display: none; }
 
-  .floating-player {
-    right: 90px;
-  }
+@media (max-width: 1200px) {
+  .saba-radio { transform: scale(calc(100vw / 1200)); transform-origin: top left; width: 1200px; height: calc(100vh * 1200 / 100vw); }
 }

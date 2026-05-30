@@ -7,23 +7,68 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="scene">
-    <header class="now-playing">
-      <div class="label">Currently Playing:</div>
-      <div id="song-title" class="title">Loading...</div>
-    </header>
+  <div id="app" class="saba-radio">
+    <div class="main-song-progress"><div id="progress-fill" class="main-song-progress-color"></div></div>
 
-    <aside class="control-rail">
-      <button id="skip-btn" title="Skip track">⏭</button>
-      <button id="refresh-btn" title="Refresh">↻</button>
-    </aside>
-
-    <section class="floating-player">
-      <div class="track-name" id="mini-title">ocean wave</div>
-      <input id="volume-slider" type="range" min="0" max="100" value="70" />
+    <section class="main-control-panel" aria-label="Clock and station status">
+      <p id="clock-label" class="clock-small">SABA RADIO</p>
+      <p id="clock" class="clock-time">10:31</p>
+      <p id="clock-meridiem" class="clock-meridiem">PM</p>
     </section>
-  </main>
 
+    <section class="background-switcher" aria-label="Scene selector">
+      <article class="scene-card scene-card-featured">
+        <div class="scene-art"></div>
+        <div class="scene-tag"></div>
+        <p class="scene-title">Outside Lighthouse</p>
+        <div class="moon"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </article>
+
+      <button class="search-pill" id="refresh-btn" type="button" title="Refresh now playing">
+        <span class="search-icon"></span><span>Press Enter...</span>
+      </button>
+
+      <article class="scene-card scene-card-small scene-card-left">
+        <div class="scene-art"></div>
+        <div class="scene-tag"></div>
+        <p class="scene-title">Inside Lighthouse</p>
+        <div class="moon"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </article>
+
+      <article class="scene-card scene-card-small scene-card-right">
+        <div class="scene-art"></div>
+        <div class="scene-tag"></div>
+        <p class="scene-title">Inside Lighthouse</p>
+        <div class="moon"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </article>
+    </section>
+
+    <section class="queue-panel" aria-label="Playback queue">
+      <div class="queue-bg"></div>
+      <div class="queue-cover">♪</div>
+      <button class="queue-arrow up" id="play-btn" type="button" title="Play activity stream">▶</button>
+      <button class="queue-arrow down" id="skip-btn" type="button" title="Skip track">⌄</button>
+      <p class="queue-label previous-label">PREVIOUS</p>
+      <p id="previous-title" class="queue-title previous-title">Loading...</p>
+      <p class="queue-label current-label">CURRENT</p>
+      <p id="song-title" class="queue-title current-title">Loading...</p>
+      <p class="queue-label next-label">NEXT UP</p>
+      <p id="next-title" class="queue-title next-title">Loading...</p>
+    </section>
+
+    <section class="volume-panel" aria-label="Volume">
+      <div class="volume-bg">🔊</div>
+      <input id="volume-slider" type="range" min="0" max="100" value="70" aria-label="Activity volume" />
+    </section>
+
+    <section class="settings-panel" aria-label="Radio actions">
+      <button type="button" title="Instant mix">☄</button>
+      <button type="button" title="Alarm">⏰</button>
+      <button type="button" title="More">•••</button>
+    </section>
+
+    <audio id="activity-audio" preload="none" crossorigin="anonymous"></audio>
+  </div>
   <script type="module" src="main.js"></script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 # ffmpeg_player.py
 import os
+import shutil
 import subprocess
 import numpy as np
 import pyaudio
@@ -18,12 +19,19 @@ class OutFFMPEG:
                 raise RuntimeError(f"ffmpeg.exe not found at: {self.ffmpeg_path}")
             return self.ffmpeg_path
 
-        # default: ../ffmpeg/ffmpeg.exe relative to this file
-        here = os.path.dirname(os.path.abspath(__file__))
-        ff = os.path.abspath(os.path.join(here, "..", "ffmpeg", "ffmpeg.exe"))
-        if not os.path.exists(ff):
-            raise RuntimeError(f"ffmpeg.exe not found at: {ff}")
-        return ff
+        bundled = os.path.abspath(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "ffmpeg", "ffmpeg.exe")
+        )
+        if os.path.exists(bundled):
+            return bundled
+
+        ffmpeg_on_path = shutil.which("ffmpeg")
+        if ffmpeg_on_path:
+            return ffmpeg_on_path
+
+        raise RuntimeError(
+            "ffmpeg not found. Install ffmpeg on PATH or pass --ffmpeg-path /path/to/ffmpeg."
+        )
 
     def _apply_volume_int16(self, pcm_bytes: bytes) -> bytes:
         if self.volume >= 0.999:
