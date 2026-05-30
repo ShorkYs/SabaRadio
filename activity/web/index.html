@@ -17,9 +17,9 @@
     <div id="clock-meridiem" class="clock-meridiem">PM</div>
 
     <div class="background-switcher" data-property-1="Default" aria-label="Scene selector">
-      <img class="featured-scene-img" src="https://placehold.co/380x244" alt="Outside Lighthouse" />
+      <img id="current-background-img" class="featured-scene-img" src="https://placehold.co/380x244" alt="Outside Lighthouse" />
       <div class="featured-scene-tag"></div>
-      <div class="featured-scene-title">Outside Lighthouse</div>
+      <div id="current-background-title" class="featured-scene-title">Outside Lighthouse</div>
       <div class="moon moon-featured" data-property-1="Variant2"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 
       <button id="refresh-btn" class="search-tag-bg" type="button" title="Refresh now playing"></button>
@@ -27,19 +27,19 @@
       <div class="search-handle"></div>
       <div class="search-text">Press Enter...</div>
 
-      <div class="inside-lighthouse" data-property-1="Default">
-        <img class="small-scene-img" src="https://placehold.co/300x194" alt="Inside Lighthouse" />
+      <button id="previous-background-btn" class="inside-lighthouse background-choice" data-property-1="Default" type="button" title="Use previous background">
+        <img id="previous-background-img" class="small-scene-img" src="https://placehold.co/300x194" alt="Inside Lighthouse" />
         <div class="small-scene-tag"></div>
-        <div class="small-scene-title">Inside Lighthouse</div>
+        <div id="previous-background-title" class="small-scene-title">Inside Lighthouse</div>
         <div class="moon moon-small" data-property-1="Variant2"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      </div>
+      </button>
 
-      <div class="outside-lighthouse" data-property-1="Default">
-        <img class="small-scene-img" src="https://placehold.co/300x194" alt="Inside Lighthouse" />
+      <button id="next-background-btn" class="outside-lighthouse background-choice" data-property-1="Default" type="button" title="Use next background">
+        <img id="next-background-img" class="small-scene-img" src="https://placehold.co/300x194" alt="Inside Lighthouse" />
         <div class="small-scene-tag"></div>
-        <div class="small-scene-title">Inside Lighthouse</div>
+        <div id="next-background-title" class="small-scene-title">Inside Lighthouse</div>
         <div class="moon moon-small" data-property-1="Variant2"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-      </div>
+      </button>
     </div>
 
     <div class="queue-panel" data-property-1="Variant2" aria-label="Playback queue">

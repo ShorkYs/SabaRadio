@@ -2,6 +2,7 @@ import argparse
 import json
 import mimetypes
 import os
+import subprocess
 import sys
 import threading
 import time
@@ -24,9 +25,10 @@ AUDIO_EXTENSIONS = {".mp3", ".wav", ".flac", ".ogg", ".m4a", ".aac", ".opus", ".
 
 
 class RadioState:
-    def __init__(self, songs: list[str], volume: float):
+    def __init__(self, songs: list[str], volume: float, durations: dict[str, float] | None = None):
         self.lock = threading.Lock()
         self.songs = songs
+        self.durations = durations or {}
         self.current_index = -1
         self.current_song: str | None = None
         self.current_started_at: float | None = None
@@ -37,14 +39,30 @@ class RadioState:
         with self.lock:
             previous_index = (self.current_index - 1) % len(self.songs) if self.songs and self.current_index >= 0 else None
             next_index = (self.current_index + 1) % len(self.songs) if self.songs and self.current_index >= 0 else None
+            duration = self.durations.get(self.current_song or "", 0.0)
+            elapsed = max(0.0, time.time() - self.current_started_at) if self.current_started_at else 0.0
+            progress = min(1.0, elapsed / duration) if duration > 0 else 0.0
+            queue_window = []
+            if self.songs and self.current_index >= 0:
+                queue_window = [
+                    {
+                        "index": (self.current_index + offset) % len(self.songs),
+                        "song": self.songs[(self.current_index + offset) % len(self.songs)],
+                    }
+                    for offset in range(min(5, len(self.songs)))
+                ]
             return {
                 "current_song": self.current_song,
                 "current_index": self.current_index,
                 "current_started_at": self.current_started_at,
+                "current_duration": duration,
+                "current_elapsed": elapsed,
+                "current_progress": progress,
                 "total_songs": len(self.songs),
                 "volume": self.volume,
                 "previous_song": self.songs[previous_index] if previous_index is not None else None,
                 "next_song": self.songs[next_index] if next_index is not None else None,
+                "queue_window": queue_window,
                 "stream_url": "/api/stream/current" if self.current_song else None,
             }
 
@@ -76,6 +94,10 @@ class RadioState:
     def get_volume(self) -> float:
         with self.lock:
             return self.volume
+
+    def get_duration(self, song: str) -> float:
+        with self.lock:
+            return self.durations.get(song, 0.0)
 
 
 def display_name(path: str | None) -> str | None:
@@ -115,7 +137,10 @@ def player_loop(state: RadioState, ffmpeg: OutFFMPEG, p: pyaudio.PyAudio, speake
             print(f"▶ Now playing: {os.path.basename(song)}")
 
             if not outputs_enabled:
+                duration = state.get_duration(song)
                 while not state.wants_skip():
+                    if duration > 0 and state.snapshot()["current_elapsed"] >= duration:
+                        break
                     time.sleep(0.2)
                 state.consume_skip_request()
                 continue
@@ -247,6 +272,10 @@ class RadioHandler(BaseHTTPRequestHandler):
                     "file_name": os.path.basename(snap["current_song"]) if snap["current_song"] else None,
                     "previous_display_name": display_name(snap["previous_song"]),
                     "next_display_name": display_name(snap["next_song"]),
+                    "queue_window": [
+                        {**item, "display_name": display_name(item["song"]), "file_name": os.path.basename(item["song"])}
+                        for item in snap["queue_window"]
+                    ],
                 },
             )
             return
@@ -255,7 +284,10 @@ class RadioHandler(BaseHTTPRequestHandler):
             self._send_json(
                 HTTPStatus.OK,
                 {
-                    "songs": [os.path.basename(s) for s in self.state.songs],
+                    "songs": [
+                        {"file_name": os.path.basename(song), "display_name": display_name(song)}
+                        for song in self.state.songs
+                    ],
                     "count": len(self.state.songs),
                 },
             )
@@ -340,6 +372,32 @@ class RadioHandler(BaseHTTPRequestHandler):
         self.send_error(HTTPStatus.NOT_FOUND)
 
 
+def probe_duration_seconds(ffmpeg: OutFFMPEG, path: str) -> float:
+    try:
+        ffmpeg_path = Path(ffmpeg._find_ffmpeg())
+        ffprobe = ffmpeg_path.with_name("ffprobe.exe" if ffmpeg_path.suffix.lower() == ".exe" else "ffprobe")
+        ffprobe_cmd = str(ffprobe) if ffprobe.exists() else "ffprobe"
+        output = subprocess.check_output(
+            [
+                ffprobe_cmd,
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                path,
+            ],
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=8,
+        )
+        return max(0.0, float(output.strip()))
+    except Exception as exc:
+        print(f"Could not probe duration for {os.path.basename(path)}: {exc}")
+        return 0.0
+
+
 def resolve_songs(music_folder: str, radio_file: str | None) -> list[str]:
     if radio_file:
         file_path = Path(radio_file).expanduser().resolve()
@@ -377,7 +435,8 @@ def main():
         raise RuntimeError(f"No songs found in {args.music_folder}")
 
     ffmpeg = OutFFMPEG(volume=args.volume, ffmpeg_path=args.ffmpeg_path)
-    state = RadioState(songs=songs, volume=args.volume)
+    durations = {song: probe_duration_seconds(ffmpeg, song) for song in songs}
+    state = RadioState(songs=songs, volume=args.volume, durations=durations)
 
     thread = threading.Thread(
         target=player_loop,

@@ -27,3 +27,13 @@ The server prints available output devices on startup. Use `--cable-index` for t
 If `ffmpeg` is not bundled in `./ffmpeg/ffmpeg.exe`, install it on your `PATH` or pass `--ffmpeg-path /path/to/ffmpeg`.
 
 For Discord Activity OAuth, set `DISCORD_CLIENT_ID` and `DISCORD_CLIENT_SECRET` on the Python server. When developing through Vite, set `VITE_DISCORD_CLIENT_ID` for the web client.
+
+### Background switcher config
+
+Edit `activity/web/backgrounds.config.js` to assign the Activity backgrounds. Each entry has:
+
+- `title`: label shown in the background switcher.
+- `image`: thumbnail/card image used by the switcher.
+- `background`: full-screen background image applied when that entry is active.
+
+The middle card is the active background. Click either side card to rotate to that configured background.

@@ -1,18 +1,34 @@
+import { radioBackgrounds } from "./backgrounds.config.js";
+
 const titleEl = document.getElementById("song-title");
 const previousTitleEl = document.getElementById("previous-title");
 const nextTitleEl = document.getElementById("next-title");
-const skipBtn = document.getElementById("skip-btn");
+const queueNextBtn = document.getElementById("skip-btn");
 const refreshBtn = document.getElementById("refresh-btn");
-const playBtn = document.getElementById("play-btn");
+const queueBackBtn = document.getElementById("play-btn");
 const volumeSlider = document.getElementById("volume-slider");
 const progressFill = document.getElementById("progress-fill");
 const clockEl = document.getElementById("clock");
 const meridiemEl = document.getElementById("clock-meridiem");
 const activityAudio = document.getElementById("activity-audio");
+const currentBackgroundImg = document.getElementById("current-background-img");
+const currentBackgroundTitle = document.getElementById("current-background-title");
+const previousBackgroundBtn = document.getElementById("previous-background-btn");
+const previousBackgroundImg = document.getElementById("previous-background-img");
+const previousBackgroundTitle = document.getElementById("previous-background-title");
+const nextBackgroundBtn = document.getElementById("next-background-btn");
+const nextBackgroundImg = document.getElementById("next-background-img");
+const nextBackgroundTitle = document.getElementById("next-background-title");
 
 const discordClientId = globalThis.__SABA_DISCORD_CLIENT_ID__ || import.meta.env?.VITE_DISCORD_CLIENT_ID || "";
 let discordSdk = null;
 let latestStreamUrl = null;
+let currentDuration = 0;
+let currentStartedAt = null;
+let currentProgress = 0;
+let queueWindow = [];
+let queueOffset = 0;
+let activeBackgroundIndex = 0;
 
 async function authenticateWithDiscord() {
   if (!discordClientId) return;
@@ -50,19 +66,71 @@ function formatDisplay(value, fallback) {
   return value || fallback;
 }
 
-function setAudioSource(streamUrl) {
+function setAudioSource(streamUrl, startAtSeconds = 0) {
   if (!streamUrl || streamUrl === latestStreamUrl) return;
 
   latestStreamUrl = streamUrl;
-  activityAudio.src = `${streamUrl}?t=${Date.now()}`;
+  const mediaStart = Math.max(0, Math.floor(startAtSeconds));
+  activityAudio.src = `${streamUrl}?t=${Date.now()}#t=${mediaStart}`;
   activityAudio.volume = Number(volumeSlider.value) / 100;
 
-  if (playBtn.dataset.playing === "true") {
+  activityAudio.play().catch((err) => {
+    console.warn("Activity audio autoplay was blocked until user interaction:", err);
+  });
+}
+
+function startActivityAudio() {
+  if (latestStreamUrl && activityAudio.paused) {
     activityAudio.play().catch((err) => {
-      console.warn("Activity audio autoplay was blocked:", err);
-      playBtn.dataset.playing = "false";
+      console.warn("Activity audio still cannot start:", err);
     });
   }
+}
+
+function queueDisplayName(offset, fallback) {
+  return queueWindow[offset]?.display_name || fallback;
+}
+
+function renderQueue(offset = queueOffset) {
+  if (!queueWindow.length) return;
+
+  queueOffset = Math.max(0, Math.min(offset, queueWindow.length - 1));
+  previousTitleEl.textContent = queueDisplayName(Math.max(0, queueOffset - 1), "Nothing yet");
+  titleEl.textContent = queueDisplayName(queueOffset, "No song running");
+  nextTitleEl.textContent = queueDisplayName(Math.min(queueWindow.length - 1, queueOffset + 1), "Looping soon");
+}
+
+function updateProgressBar() {
+  let progress = currentProgress;
+  if (currentDuration > 0 && currentStartedAt) {
+    progress = Math.min(1, Math.max(0, (Date.now() / 1000 - currentStartedAt) / currentDuration));
+  }
+  progressFill.style.width = `${Math.max(0, Math.min(100, progress * 100))}%`;
+}
+
+function renderBackgrounds() {
+  if (!radioBackgrounds.length) return;
+
+  const current = radioBackgrounds[activeBackgroundIndex];
+  const previous = radioBackgrounds[(activeBackgroundIndex - 1 + radioBackgrounds.length) % radioBackgrounds.length];
+  const next = radioBackgrounds[(activeBackgroundIndex + 1) % radioBackgrounds.length];
+
+  document.body.style.backgroundImage = `url("${current.background}")`;
+  currentBackgroundImg.src = current.image;
+  currentBackgroundImg.alt = current.title;
+  currentBackgroundTitle.textContent = current.title;
+  previousBackgroundImg.src = previous.image;
+  previousBackgroundImg.alt = previous.title;
+  previousBackgroundTitle.textContent = previous.title;
+  nextBackgroundImg.src = next.image;
+  nextBackgroundImg.alt = next.title;
+  nextBackgroundTitle.textContent = next.title;
+}
+
+function switchBackground(direction) {
+  if (!radioBackgrounds.length) return;
+  activeBackgroundIndex = (activeBackgroundIndex + direction + radioBackgrounds.length) % radioBackgrounds.length;
+  renderBackgrounds();
 }
 
 async function fetchNowPlaying() {
@@ -70,42 +138,37 @@ async function fetchNowPlaying() {
   if (!res.ok) throw new Error(`Now-playing request failed: ${res.status}`);
 
   const data = await res.json();
-  titleEl.textContent = formatDisplay(data.display_name, "No song running");
-  previousTitleEl.textContent = formatDisplay(data.previous_display_name, "Nothing yet");
-  nextTitleEl.textContent = formatDisplay(data.next_display_name, "Looping soon");
+  currentDuration = Number(data.current_duration) || 0;
+  currentStartedAt = Number(data.current_started_at) || null;
+  currentProgress = Number(data.current_progress) || 0;
+  queueWindow = Array.isArray(data.queue_window) ? data.queue_window.slice(0, 5) : [];
+
+  if (queueOffset >= queueWindow.length) queueOffset = 0;
+  if (queueOffset === 0) {
+    titleEl.textContent = formatDisplay(data.display_name, "No song running");
+    previousTitleEl.textContent = formatDisplay(data.previous_display_name, "Nothing yet");
+    nextTitleEl.textContent = formatDisplay(data.next_display_name, "Looping soon");
+  } else {
+    renderQueue(queueOffset);
+  }
 
   if (typeof data.volume === "number") {
     volumeSlider.value = Math.round(data.volume * 100);
     activityAudio.volume = data.volume;
   }
 
-  if (data.total_songs > 0 && data.current_index >= 0) {
-    const progress = ((data.current_index + 1) / data.total_songs) * 100;
-    progressFill.style.width = `${Math.max(4, Math.min(100, progress))}%`;
-  }
+  updateProgressBar();
 
-  setAudioSource(data.stream_url);
+  setAudioSource(data.stream_url, data.current_elapsed);
 }
 
-async function skipTrack() {
-  await fetch("/api/skip", { method: "POST" });
-  latestStreamUrl = null;
-  activityAudio.pause();
-  setTimeout(fetchNowPlaying, 700);
+function showNextQueueItem() {
+  if (!queueWindow.length) return;
+  renderQueue((queueOffset + 1) % queueWindow.length);
 }
 
-function toggleActivityAudio() {
-  if (!activityAudio.src && latestStreamUrl) {
-    setAudioSource(latestStreamUrl);
-  }
-
-  if (activityAudio.paused) {
-    activityAudio.play();
-    playBtn.dataset.playing = "true";
-  } else {
-    activityAudio.pause();
-    playBtn.dataset.playing = "false";
-  }
+function returnToCurrentQueueItem() {
+  renderQueue(0);
 }
 
 let volumeTimer;
@@ -124,9 +187,23 @@ function updateClock() {
   meridiemEl.textContent = now.toLocaleTimeString([], { hour: "numeric", hour12: true }).split(" ").pop() || "";
 }
 
-skipBtn.addEventListener("click", skipTrack);
+queueNextBtn.addEventListener("click", () => {
+  startActivityAudio();
+  showNextQueueItem();
+});
 refreshBtn.addEventListener("click", fetchNowPlaying);
-playBtn.addEventListener("click", toggleActivityAudio);
+queueBackBtn.addEventListener("click", () => {
+  startActivityAudio();
+  returnToCurrentQueueItem();
+});
+previousBackgroundBtn.addEventListener("click", () => {
+  startActivityAudio();
+  switchBackground(-1);
+});
+nextBackgroundBtn.addEventListener("click", () => {
+  startActivityAudio();
+  switchBackground(1);
+});
 volumeSlider.addEventListener("input", updateVolume);
 window.addEventListener("keydown", (event) => {
   if (event.key === "Enter") fetchNowPlaying();
@@ -135,7 +212,9 @@ activityAudio.addEventListener("ended", fetchNowPlaying);
 
 async function bootstrap() {
   updateClock();
+  renderBackgrounds();
   setInterval(updateClock, 1000);
+  setInterval(updateProgressBar, 500);
 
   try {
     await authenticateWithDiscord();

@@ -21,13 +21,15 @@ body {
   overflow: hidden;
   color: white;
   font-family: var(--font-radio);
+  background-position: center;
+  background-size: cover;
 }
 
 .saba-radio {
   width: 1920px;
   height: 1080px;
   position: relative;
-  background: black;
+  background: rgba(0, 0, 0, 0.72);
   overflow: hidden;
   transform-origin: top left;
 }
@@ -65,9 +67,9 @@ body {
 }
 
 .clock-time {
-  width: 123px;
-  height: 68px;
-  left: 899px;
+  width: 134px;
+  height: 72px;
+  left: 893px;
   top: 14px;
   position: absolute;
   color: #fffdfd;
@@ -291,6 +293,13 @@ body {
   width: 300px;
   height: 198px;
   position: absolute;
+}
+
+.background-choice {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
 }
 
 .inside-lighthouse {
