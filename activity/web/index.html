@@ -7,23 +7,75 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <main class="scene">
-    <header class="now-playing">
-      <div class="label">Currently Playing:</div>
-      <div id="song-title" class="title">Loading...</div>
-    </header>
+  <div id="app" class="saba-radio">
+    <div class="main-song-progress"></div>
+    <div id="progress-fill" class="main-song-progress-color"></div>
 
-    <aside class="control-rail">
-      <button id="skip-btn" title="Skip track">⏭</button>
-      <button id="refresh-btn" title="Refresh">↻</button>
-    </aside>
+    <div class="main-control-panel" aria-hidden="true"></div>
+    <div id="clock" class="clock-time">10:31</div>
+    <div id="clock-label" class="clock-small">SABA RADIO</div>
+    <div id="clock-meridiem" class="clock-meridiem">PM</div>
 
-    <section class="floating-player">
-      <div class="track-name" id="mini-title">ocean wave</div>
-      <input id="volume-slider" type="range" min="0" max="100" value="70" />
-    </section>
-  </main>
+    <div class="background-switcher" data-property-1="Default" aria-label="Scene selector">
+      <img id="current-background-img" class="featured-scene-img" src="https://placehold.co/380x244" alt="Outside Lighthouse" />
+      <div class="featured-scene-tag"></div>
+      <div id="current-background-title" class="featured-scene-title">Outside Lighthouse</div>
+      <div class="moon moon-featured" data-property-1="Variant2"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
 
+      <button id="refresh-btn" class="search-tag-bg" type="button" title="Refresh now playing"></button>
+      <div class="search-circle"></div>
+      <div class="search-handle"></div>
+      <div class="search-text">Press Enter...</div>
+
+      <button id="previous-background-btn" class="inside-lighthouse background-choice" data-property-1="Default" type="button" title="Use previous background">
+        <img id="previous-background-img" class="small-scene-img" src="https://placehold.co/300x194" alt="Inside Lighthouse" />
+        <div class="small-scene-tag"></div>
+        <div id="previous-background-title" class="small-scene-title">Inside Lighthouse</div>
+        <div class="moon moon-small" data-property-1="Variant2"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </button>
+
+      <button id="next-background-btn" class="outside-lighthouse background-choice" data-property-1="Default" type="button" title="Use next background">
+        <img id="next-background-img" class="small-scene-img" src="https://placehold.co/300x194" alt="Inside Lighthouse" />
+        <div class="small-scene-tag"></div>
+        <div id="next-background-title" class="small-scene-title">Inside Lighthouse</div>
+        <div class="moon moon-small" data-property-1="Variant2"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      </button>
+    </div>
+
+    <div class="queue-panel" data-property-1="Variant2" aria-label="Playback queue">
+      <div class="queue-bg"></div>
+      <div class="queue-music"></div>
+      <button id="play-btn" class="queue-play-box" type="button" title="Play activity stream"></button>
+      <div class="queue-offscreen-box"></div>
+      <div class="queue-offscreen-keepoff"></div>
+      <div class="current-label">CURRENT</div>
+      <div class="next-label">NEXT UP</div>
+      <div id="song-title" class="current-title">A LITTLE DREAM OF ME</div>
+      <button id="skip-btn" class="queue-arrow-down" type="button" title="Skip track"></button>
+      <div class="queue-arrow-up"></div>
+      <div id="next-title" class="next-title">MARRY ME</div>
+      <div id="previous-title" class="previous-title">FLY ME TO THE MOON</div>
+      <div class="previous-label">PREVIOUS</div>
+    </div>
+
+    <div class="volume-panel" aria-label="Volume">
+      <div class="volume-bg"></div>
+      <div class="volume-icon"></div>
+      <input id="volume-slider" type="range" min="0" max="100" value="70" aria-label="Activity volume" />
+    </div>
+
+    <div class="settings-component" data-property-1="Variant4" aria-label="Radio actions">
+      <div class="settings-bg"></div>
+      <button class="settings-dot settings-more-bg" type="button" title="More"></button>
+      <div class="settings-more-icon"></div>
+      <button class="settings-dot settings-alarm-bg" type="button" title="Alarm"></button>
+      <div class="settings-alarm-icon"></div>
+      <button class="settings-mix-bg" type="button" title="Instant mix"></button>
+      <div class="settings-mix-icon"></div>
+    </div>
+
+    <audio id="activity-audio" preload="none" crossorigin="anonymous"></audio>
+  </div>
   <script type="module" src="main.js"></script>
 </body>
 </html>
