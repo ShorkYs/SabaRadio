@@ -61,7 +61,6 @@ function setAudioSource(streamUrl) {
     activityAudio.play().catch((err) => {
       console.warn("Activity audio autoplay was blocked:", err);
       playBtn.dataset.playing = "false";
-      playBtn.textContent = "▶";
     });
   }
 }
@@ -103,11 +102,9 @@ function toggleActivityAudio() {
   if (activityAudio.paused) {
     activityAudio.play();
     playBtn.dataset.playing = "true";
-    playBtn.textContent = "Ⅱ";
   } else {
     activityAudio.pause();
     playBtn.dataset.playing = "false";
-    playBtn.textContent = "▶";
   }
 }
 
